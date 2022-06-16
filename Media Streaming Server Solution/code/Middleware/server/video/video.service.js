@@ -1,5 +1,6 @@
 const configs = require('../../config/config');
 const { s3 } = require('../helpers/aws.s3.instance');
+var _ = require('lodash');
 
 async function getVideos() {
   return new Promise(async (resolve, reject) => {
@@ -30,7 +31,7 @@ async function getVideo({ key, res, range }) {
             reject('Requires Range header');
           }
           const videoSize = data.ContentLength;
-          const CHUNK_SIZE = 10 ** 7; // 1MB
+          const CHUNK_SIZE = 10 ** 7; // 10MB
           const start = Number(range.replace(/\D/g, ''));
           const end = Math.min(start + CHUNK_SIZE, videoSize - 1);
           const contentLength = end - start + 1;
@@ -78,9 +79,78 @@ const getSignedPutUrl = async (key, type) => {
     throw err;
   }
 };
+async function initiateMultiPartUpload(key, type, numberOfparts) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const parts = numberOfparts;
+      const bucketParams = { Bucket: configs.video_bucket, Key: key };
+      const res = await s3.createMultipartUpload(bucketParams).promise();
 
+      const baseParams = {
+        Bucket: configs.video_bucket,
+        Key: key,
+        UploadId: res.UploadId,
+      };
+      const promises = [];
+
+      for (let index = 0; index < parts; index++) {
+        promises.push(
+          s3.getSignedUrlPromise('uploadPart', {
+            ...baseParams,
+            PartNumber: index + 1,
+          })
+        );
+      }
+
+      const response = await Promise.all(promises);
+      resolve({
+        UploadId: res.UploadId,
+        urls: response.reduce((map, part, index) => {
+          map[index] = part;
+          return map;
+        }, {}),
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+async function completeMultiUpload({ UploadId, parts, key }) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      console.log(UploadId, parts, key);
+      const bucketParams = {
+        Bucket: configs.video_bucket,
+        Key: key,
+        UploadId: UploadId,
+        MultipartUpload: { Parts: _.orderBy(parts, ['PartNumber'], ['asc']) },
+      };
+      await s3.completeMultipartUpload(bucketParams).promise();
+      resolve('done');
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+async function deleteVideo({ key }) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const bucketParams = {
+        Bucket: configs.video_bucket,
+        Key: key,
+      };
+      await s3.deleteObject(bucketParams).promise();
+      resolve('done');
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
 module.exports = {
   getVideos,
   getVideo,
   getSignedPutUrl,
+  initiateMultiPartUpload,
+  completeMultiUpload,
+  deleteVideo,
 };
