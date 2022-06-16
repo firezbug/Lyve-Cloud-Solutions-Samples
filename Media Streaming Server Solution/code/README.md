@@ -121,8 +121,16 @@ go to the previous directory; which is to the code folder. You will find a folde
 **Step 2:**
 Go inside the front-end folder and install the related node modules.
 
+```bash
+  npm install
+```
+
 **Step 3:**
 Start the front end application being inside this front-end folder.
+
+```bash
+  npm start
+```
 
 Thats it. Now you will see a client application on port 3000
 
