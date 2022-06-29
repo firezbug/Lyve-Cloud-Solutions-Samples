@@ -1,4 +1,4 @@
-# Media Streaming Server Solution by The Water Cooler
+# Media Streaming Server Solution by The Water Cooler Team
 
 [Powerpoint Presentation](https://docs.google.com/presentation/d/10wmty7K7HCv-a3p8OxNH3ZqIrVCZ4bPY/edit?usp=sharing&ouid=104961336018066608218&rtpof=true&sd=true)
 
